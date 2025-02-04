@@ -6,19 +6,8 @@ import os
 
 load_dotenv()
 
-USER = os.getenv("DB_USER")
-PASSWORD = os.getenv("DB_PASSWORD")
-HOST = os.getenv("DB_HOST")
-PORT = os.getenv("DB_PORT")
-DBNAME = os.getenv("DB_NAME")
-
-connection = psycopg2.connect(
-        user=USER,
-        password=PASSWORD,
-        host=HOST,
-        port=PORT,
-        dbname=DBNAME
-    )
+URL = os.getenv("DATABASE_URL")
+connection = psycopg2.connect(URL)
 
 app = Flask(__name__)
 
@@ -26,7 +15,7 @@ cursor = connection.cursor()
 
 @app.route("/")
 def home():
-    cursor.execute("select * from schools;")
+    cursor.execute("select * from school;")
     result = cursor.fetchone()
     return "Welcome to Flask on Heroku {}!".format(result)
 
