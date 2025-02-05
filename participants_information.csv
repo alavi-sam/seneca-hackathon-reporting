@@ -1,0 +1,3 @@
+MemberNumber,FirstName,LastName,Email,TeamName,IsLeader,ShirtSize,FromSeneca,IsAlumni,SchoolName,GraduationYear,SemesterNumber,StudyFieldName,ProgramName,DegreeType,IsSolo,HavingTeam,RegisterTime(UTC0)
+1,Aryan,Sharma,asharma614@myseneca.ca,Rangers,True,L,True,False,,,3,,Computer Programming,,False,True,2025-02-05 13:11:44
+2,Abba,Gabba,mustafa.a.r.siddiqui@outlook.com,Rangers,False,M,True,True,,2019,0,,Art Fundamentals,,False,True,2025-02-05 13:15:16
