@@ -4,9 +4,11 @@ import csv
 from sqlalchemy.orm import Session
 from app.crud import get_information
 from app.db import SessionLocal
+from dotenv import load_dotenv
 
 app = FastAPI()
 
+load_dotenv()
 
 def get_db():
     db = SessionLocal()
@@ -20,7 +22,7 @@ def get_db():
 def get_first_participant(db: Session = Depends(get_db)):
     data = get_information(db)
     # print(type(participant_data))
-
+    # print(data)
     file_path = 'participants_information.csv'
     with open (file_path, 'w', newline='') as file:
         writer = csv.writer(file)
@@ -66,9 +68,10 @@ def get_first_participant(db: Session = Depends(get_db)):
         participant_data.registered_at.strftime("%Y-%m-%d %H:%M:%S") if participant_data.registered_at else '')
         for participant_data in data
     ]
-
+        # print(participants)
+        print('HELLO WORLD')
         writer.writerow(header)
 
         writer.writerows(participants)
-
+    print('hello')
     return FileResponse(file_path, media_type='text/csv', filename='participants_information.csv')
