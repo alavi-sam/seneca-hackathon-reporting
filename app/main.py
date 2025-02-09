@@ -24,7 +24,7 @@ def get_first_participant(db: Session = Depends(get_db)):
     # print(type(participant_data))
     # print(data)
     file_path = 'participants_information.csv'
-    with open (file_path, 'w', newline='') as file:
+    with open (file_path, 'w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
         header = [
             'MemberNumber',
