@@ -5,7 +5,7 @@ from app.db import get_db
 from sqlalchemy.orm import Session
 from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm
-from app.auth.services import get_user, create_access_token
+from app.auth.services import get_user, create_access_token, validate_user
 
 
 
@@ -20,10 +20,12 @@ async def login_page(request: Request):
 
 @auth_router.post('/login')
 async def login_user(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = get_user(db, form_data.username, form_data.password)
+    fetched_user = get_user(db, form_data.username)
+    if not fetched_user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    user = validate_user(db, fetched_user, form_data.password)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-
     access_token = create_access_token(data={'sub': user.username})
     response = RedirectResponse(url='/', status_code=status.HTTP_303_SEE_OTHER)
     response.set_cookie(
