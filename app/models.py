@@ -5,7 +5,6 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 metadata = Base.metadata
 
-
 class ParticipantInformation(Base):
     __tablename__ = 'participant_informations'
 
@@ -27,6 +26,17 @@ class ParticipantInformation(Base):
     is_solo = Column(Boolean)
     having_team = Column(Boolean)
     registered_at = Column(DateTime(True))
+
+
+
+
+class ReportUser(Base):
+    __tablename__ = 'report_users'
+
+    user_id = Column(Integer, primary_key=True, server_default=text("nextval('report_users_user_id_seq'::regclass)"))
+    username = Column(Text, nullable=False)
+    password = Column(Text, nullable=False)
+
 
 
 class School(Base):
