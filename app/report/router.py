@@ -1,18 +1,22 @@
-from fastapi import APIRouter
-from fastapi import Depends
+from fastapi import APIRouter, Depends
+from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.orm import Session
-from db import get_db
+from app.services.authentication import check_for_login
+from app.db import get_db
+from app.report.services import get_information
+import csv
 
 
 
-auth_router = APIRouter(prefix='/report')
+report_router = APIRouter()
 
 
 
-@auth_router.get('/download-csv')
-def get_first_participant(db: Session = Depends(get_db)):
+@report_router.get('/')
+def get_first_participant(db: Session = Depends(get_db), user=Depends(check_for_login)):
+    if not user:
+        return RedirectResponse('/auth/login')
     data = get_information(db)
-
     file_path = 'participants_information.csv'
     with open(file_path, "w", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
@@ -59,9 +63,6 @@ def get_first_participant(db: Session = Depends(get_db)):
         for participant_data in data
     ]
         # print(participants)
-        print('HELLO WORLD')
         writer.writerow(header)
-
         writer.writerows(participants)
-    print('hello')
     return FileResponse(file_path, media_type='text/csv', filename='participants_information.csv')
