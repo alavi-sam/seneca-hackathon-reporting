@@ -1,10 +1,14 @@
-from fastapi import Depends, Request, HTTPException, staticfiles, status
+from fastapi import Request, HTTPException, status, Depends
 from jose import jwt, JWTError
 import os
+from app.db import get_db
+from app.auth.services import get_user
+from sqlalchemy.orm import Session
+from app.models import ReportUser
 
 
-
-def get_current_user(request: Request):
+# 
+def get_current_user(request: Request, db: Session):
     token = request.cookies.get('access_token')
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
@@ -14,7 +18,11 @@ def get_current_user(request: Request):
         token_username = decoded_token.get('sub')
         if token_username is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        if get_user(db, token_username) is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
         return {"username": token_username}
+    except Exception as e:
+        print(str(e))
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
        

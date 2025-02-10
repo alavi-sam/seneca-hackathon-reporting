@@ -7,10 +7,16 @@ import os
 
 
 
-def get_user(db: Session, username: str, password: str):
+def get_user(db: Session, username: str):
     fetched_user = db.query(ReportUser).filter(ReportUser.username == username).first()
-    if fetched_user and fetched_user.password == password:
+    if fetched_user:
         return fetched_user
+    return None
+
+
+def validate_user(db:Session, user: ReportUser, password: str):
+    if user.password == password:
+        return user
     return None
 
 
