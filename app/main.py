@@ -21,7 +21,7 @@ async def get_index(request: Request, user=Depends(check_for_login)):
     
 
 
-@app.get('/main')
+@app.get('/')
 async def get_main(request: Request, user=Depends(check_for_login)):
     print(user)
     if not user:
