@@ -174,3 +174,7 @@ cython_debug/
 *.csv
 
 *.env
+
+airflow-*
+logs/
+airflow.db
