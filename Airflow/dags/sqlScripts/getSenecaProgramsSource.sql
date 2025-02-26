@@ -1,0 +1,1 @@
+select * from seneca_programs;
