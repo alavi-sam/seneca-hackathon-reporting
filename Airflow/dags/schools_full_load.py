@@ -61,8 +61,8 @@ def _transform_school(**kwargs):
     column_names = ['school_id', 'school_name', 'province', 'city']
     df = pd.DataFrame(fetched_data, columns=column_names)
 
-    os.makedirs(os.path.join(BASE_PATH, 'dags', 'tempFiles'), exist_ok=True)
-    df.to_csv(os.path.join(BASE_PATH, 'dags', 'tempFiles', 'SourceSchool.csv'), index=False)
+    os.makedirs(os.path.join(BASE_PATH, 'tempFiles'), exist_ok=True)
+    df.to_csv(os.path.join(BASE_PATH, 'tempFiles', 'SourceSchool.csv'), index=False)
 
 
 def _insert_school_table(**kwargs):
@@ -127,8 +127,8 @@ def _transform_seneca_programs(**kwargs):
     fetched_data = ti.xcom_pull('fetch_seneca_programs')
     columns = ['program_id', 'program_name']
     df = pd.DataFrame(fetched_data, columns=columns)
-    os.makedirs(os.path.join(BASE_PATH, 'dags', 'tempFiles'), exist_ok=True)
-    df.to_csv(os.path.join(BASE_PATH, 'dags', 'tempFiles', 'SourceSenecaPrograms.csv'), index=False)
+    os.makedirs(os.path.join(BASE_PATH, 'tempFiles'), exist_ok=True)
+    df.to_csv(os.path.join(BASE_PATH, 'tempFiles', 'SourceSenecaPrograms.csv'), index=False)
 
 
 
@@ -151,12 +151,12 @@ def _insert_sencea_programs(**kwargs):
     )
 
     cursor = conn.cursor()
-    with open(os.path.join(BASE_PATH, 'dags', 'tempFiles', 'SourceSenecaPrograms.csv'), 'r') as f:
+    with open(os.path.join(BASE_PATH, 'tempFiles', 'SourceSenecaPrograms.csv'), 'r') as f:
         cursor.copy_expert("""
                 COPY seneca_programs FROM STDIN WITH CSV HEADER DELIMITER ',';
                     """, f)
+    conn.commit()
     cursor.close()
-    conn.close()
 
 
 
