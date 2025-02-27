@@ -84,6 +84,7 @@ def _insert_school_table(**kwargs):
         
     conn.commit()
     cursor.close()
+    conn.close()
 
 transform_school_data = PythonOperator(
     python_callable=_transform_school,
@@ -157,6 +158,7 @@ def _insert_sencea_programs(**kwargs):
                     """, f)
     conn.commit()
     cursor.close()
+    conn.close()
 
 
 
@@ -175,14 +177,221 @@ remove_seneca_programs_csv = BashOperator(
 )
 
 
-participants_placeholder = EmptyOperator(
-    task_id='participants_placeholder',
+dummy_task = EmptyOperator(
+    task_id='bridge_between_tasks',
     dag=dag
 )
 
 
 
-end_task = EmptyOperator(
+truncate_participants_report = SQLExecuteQueryOperator(
+    conn_id='supabase_report',
+    sql='sqlScripts/truncateParticipantsDest.sql',
+    task_id='truncate_participants_table',
+    dag=dag
+)
+
+
+fetch_participants_data = SQLExecuteQueryOperator(
+    conn_id='supabase_prod',
+    sql='sqlScripts/getParticipantsSource.sql',
+    task_id='fetch_participants_data',
+    do_xcom_push=True
+)
+
+
+
+def _transform_participants(**kwargs):
+    ti = kwargs['ti']
+    participants_data = ti.xcom_pull('fetch_participants_data')
+    columns = ['participant_id', 'firstname', 'lastname', 'email', 'phone_number', 'is_alumni', 'graduation_year',
+               'graduation_month', 'from_seneca', 'school_id', 'semester_number', 'shirt_size', 'seneca_program_id',
+               'is_solo', 'having_team', 'degree_type', 'study_field_name', 'registered_at']
+    df = pd.DataFrame(participants_data, columns=columns)
+    mask = df['seneca_program_id'].notnull()
+    df.loc[mask, 'seneca_program_id'] = df.loc[mask, 'seneca_program_id'].astype(int)
+    df.to_csv(os.path.join(BASE_PATH, 'tempFiles', 'SourceParticipants.csv'), index=False, float_format="%.0f")
+
+
+transform_participants_data = PythonOperator(
+    python_callable=_transform_participants,
+    task_id='transform_participants',
+    dag=dag,
+    provide_context=True
+)
+
+
+def _insert_participants(**kwargs):
+    report_conn = BaseHook.get_connection(conn_id='supabase_report')
+    conn = psycopg2.connect(
+        host=report_conn.host,
+        port=report_conn.port,
+        user=report_conn.login,
+        password=report_conn.password,
+        database=report_conn.schema
+    )
+
+    cursor = conn.cursor()
+    with open(os.path.join(BASE_PATH, 'tempFiles', 'SourceParticipants.csv'), 'r') as f:
+        cursor.copy_expert("""
+            COPY participants FROM STDIN WITH CSV HEADER DELIMITER ',';
+    """, f)
+    
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+
+
+load_participants = PythonOperator(
+    python_callable=_insert_participants,
+    task_id='load_participants',
+    dag=dag
+)
+
+
+remove_participants_csv = BashOperator(
+    bash_command='rm -f $AIRFLOW_HOME/dags/tempFiles/SourceParticipants.csv',
+    task_id='remove_participants_csv',
+    dag=dag
+)
+
+
+truncate_teams_report = SQLExecuteQueryOperator(
+    conn_id='supabase_report',
+    sql='sqlScripts/truncateTeamsDest.sql',
+    task_id='truncate_teams_table',
+    dag=dag
+)
+
+
+fetch_teams_data = SQLExecuteQueryOperator(
+    conn_id='supabase_prod',
+    sql='sqlScripts/getTeamsSource.sql',
+    task_id='fetch_teams_data',
+    dag=dag,
+    do_xcom_push=True
+)
+
+
+def _transform_teams(**kwargs):
+    ti = kwargs['ti']
+    teams_data = ti.xcom_pull('fetch_teams_data')
+    columns = ['team_id', 'team_name', 'team_passcode', 'is_private', 'created_at']
+    df = pd.DataFrame(teams_data, columns=columns)
+    df.to_csv(os.path.join(BASE_PATH, 'tempFiles', 'SourceTeams.csv'), index=False)
+
+
+transform_teams_data = PythonOperator(
+    python_callable=_transform_teams,
+    task_id='transform_teams',
+    dag=dag,
+    provide_context=True
+)
+
+
+def _insert_teams(**kwargs):
+    report_conn = BaseHook.get_connection(conn_id='supabase_report')
+    conn = psycopg2.connect(
+        host=report_conn.host,
+        port=report_conn.port,
+        database=report_conn.schema,
+        user=report_conn.login,
+        password=report_conn.password
+    )
+
+    cursor = conn.cursor()
+    with open(os.path.join(BASE_PATH, 'tempFiles', 'SourceTeams.csv'), 'r') as f:
+        cursor.copy_expert("""
+            COPY teams FROM STDIN WITH CSV HEADER DELIMITER ',';
+            """, f)
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+
+load_teams_data = PythonOperator(
+    python_callable=_insert_teams,
+    task_id='load_teams_data',
+    dag=dag
+)
+
+
+remove_teams_csv = BashOperator(
+    bash_command='rm -f $AIRFLOW_HOME/dags/tempFiles/SourceTeams.csv',
+    task_id='remove_teams_csv',
+    dag=dag
+)
+
+
+truncate_team_members_report = SQLExecuteQueryOperator(
+    conn_id='supabase_report',
+    sql='sqlScripts/truncateTeamMembersDest.sql',
+    task_id='truncate_team_members_table',
+    dag=dag
+)
+
+
+fetch_team_members_data = SQLExecuteQueryOperator(
+    conn_id='supabase_prod',
+    sql='sqlScripts/getTeamMembersSource.sql',
+    task_id='fetch_team_members',
+    dag=dag,
+    do_xcom_push=True
+)
+
+
+def _transform_team_members(**kwargs):
+    ti = kwargs['ti']
+    team_members_data = ti.xcom_pull('fetch_team_members')
+    columns = ['team_id', 'participant_id', 'is_leader', 'joined_at']
+    df = pd.DataFrame(team_members_data, columns=columns)
+    df.to_csv(os.path.join(BASE_PATH, 'tempFiles', 'SourceTeamMembers.csv'), index=False)
+
+
+transform_team_members_data = PythonOperator(
+    python_callable=_transform_team_members,
+    task_id='transform_team_members',
+    dag=dag,
+    provide_context=True
+)
+
+
+def _insert_team_members(**kwargs):
+    report_conn = BaseHook.get_connection(conn_id='supabase_report')
+    conn = psycopg2.connect(
+        host=report_conn.host,
+        port=report_conn.port,
+        database=report_conn.schema,
+        user=report_conn.login,
+        password=report_conn.password
+        )
+    
+    cursor = conn.cursor()
+    with open(os.path.join(BASE_PATH, 'tempFiles', 'SourceTeamMembers.csv'), 'r') as f:
+        cursor.copy_expert("""
+            COPY team_members FROM STDIN WITH CSV HEADER DELIMITER ',';
+    """, file=f)
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+
+load_team_members_data = PythonOperator(
+    python_callable=_insert_team_members,
+    task_id='load_team_memebers_data',
+    dag=dag
+)
+
+
+remove_team_members_csv = BashOperator(
+    bash_command='rm -f $AIRFLOW_HOME/dags/tempFiles/SourceTeamMembers.csv',
+    task_id='remove_team_members_csv',
+    dag=dag
+)
+
+
+end_dag = EmptyOperator(
     task_id='ending_task',
     dag=dag
 )
@@ -194,5 +403,15 @@ start_dag >> [truncate_school_report, truncate_seneca_programs_report]
 truncate_school_report >> fetch_school_data >> transform_school_data >> load_school >> remove_school_csv
 truncate_seneca_programs_report >> fetch_seneca_programs >> transform_programs_data >> load_seneca_programs >> remove_seneca_programs_csv
 
-[remove_school_csv, remove_seneca_programs_csv] >> participants_placeholder >> end_task
+[remove_school_csv, remove_seneca_programs_csv] >> dummy_task
+
+dummy_task >> [truncate_teams_report, truncate_participants_report]
+
+truncate_teams_report >> fetch_teams_data >> transform_teams_data >> load_teams_data >> remove_teams_csv
+truncate_participants_report >> fetch_participants_data >> transform_participants_data >> load_participants >> remove_participants_csv
+
+[remove_participants_csv, remove_teams_csv] >> truncate_team_members_report
+truncate_team_members_report >> fetch_team_members_data >> transform_team_members_data >> load_team_members_data >> remove_team_members_csv
+
+remove_team_members_csv >> end_dag
 
