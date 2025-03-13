@@ -178,4 +178,4 @@ cython_debug/
 airflow-*
 logs/
 airflow.db
-Airflow/dags/sheetsAPI.json
+Airflow/dags/sheetsAPI.jsonAirflow/dags/sheetsAPI.json
