@@ -8,6 +8,7 @@ import psycopg2
 import datetime as dt
 import pandas as pd
 import os
+import requests
 import io
 
 
@@ -389,6 +390,40 @@ remove_team_members_csv = BashOperator(
     task_id='remove_team_members_csv',
     dag=dag
 )
+
+
+def download_student_success_team(**kwargs):
+    url = 'https://docs.google.com/spreadsheets/d/1WCAsZj_nxYFwO01Zzaxko2WBjWXT7ekJ/export?format=csv&gid=1125428113#gid=1125428113'
+    response = requests.get(url)
+    if response.status_code == 200:
+        file = io.BytesIO(response.content)
+        df = pd.read_csv(file)
+        df.to_csv(os.path.join(BASE_PATH, 'tempFiles', 'studentSuccessTeamSheet.csv'))
+    else:
+        raise Exception('could not download student success team file!')
+
+
+download_ss_sheet = PythonOperator(
+    python_callable=download_student_success_team,
+    task_id='download_student_success_team_gsheet',
+    dag=dag
+)
+
+
+def update_student_rows(**kwargs):
+    df = pd.read_csv(os.path.join(BASE_PATH, 'tempFiles', 'studentSuccessTeamSheet.csv'))
+    report_conn = BaseHook.get_connection(conn_id='supabase_report')
+    conn = psycopg2.connect(
+        host=report_conn.host,
+        port=report_conn.port,
+        database=report_conn.schema,
+        user=report_conn.login,
+        password=report_conn.password
+    )
+
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM ")
+
 
 
 end_dag = EmptyOperator(
